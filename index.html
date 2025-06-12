@@ -1,1 +1,175 @@
-<!-- placeholder until full file is restored -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Kit 💬</title>
+  <style>
+    body {
+      background-color: #121212;
+      color: #eaeaea;
+      font-family: 'Segoe UI', sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100dvh;
+      margin: 0;
+    }
+    #chatbox {
+      background: #1e1e1e;
+      border-radius: 14px;
+      box-shadow: 0 0 15px rgba(255, 255, 255, 0.05);
+      padding: 10px;
+      width: 100%;
+      max-width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      box-sizing: border-box;
+    }
+    #messages {
+      flex: 1;
+      overflow-y: auto;
+      margin-bottom: 10px;
+    }
+    .message {
+      margin: 6px 0;
+      padding: 10px 14px;
+      border-radius: 16px;
+      max-width: 80%;
+      line-height: 1.4;
+      word-wrap: break-word;
+      font-size: 0.95rem;
+    }
+    .kit {
+      align-self: flex-start;
+      background-color: #2a2a2a;
+    }
+    .user {
+      align-self: flex-end;
+      background-color: #005fcc;
+      color: white;
+    }
+    #inputRow {
+      display: flex;
+      gap: 4px;
+      flex-wrap: nowrap;
+      align-items: center;
+    }
+    input[type="text"] {
+      background: #333;
+      border: none;
+      color: white;
+      padding: 10px;
+      border-radius: 10px;
+      flex: 1;
+      outline: none;
+      font-size: 0.95rem;
+    }
+    button {
+      background: #333;
+      color: white;
+      border: none;
+      padding: 10px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 1.2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+  </style>
+</head>
+<body>
+  <div id="chatbox">
+    <div id="messages"></div>
+    <div id="inputRow">
+      <input id="input" type="text" placeholder="Say something..." />
+      <button id="sendBtn">📤</button>
+    </div>
+  </div>
+
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+
+    const input = document.getElementById("input");
+    const messages = document.getElementById("messages");
+    const sendBtn = document.getElementById("sendBtn");
+
+    const supabase = createClient(
+      "https://nstfsrtyvsjsjqjuncbh.supabase.co",
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zdGZzcnR5dnNqc2pxanVuY2JoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk2NzI4OTcsImV4cCI6MjA2NTI0ODg5N30.Ch6EeghYr7zlAQgVsYbxun5SNSKMglojDGEtYNCLhVs"
+    );
+
+    function showMessage(sender, text) {
+      const message = document.createElement("div");
+      message.className = `message ${sender}`;
+      message.textContent = text;
+      messages.appendChild(message);
+      messages.scrollTop = messages.scrollHeight;
+    }
+
+    async function saveToMemory(sender, message) {
+      await supabase.from("chat_logs").insert([{ sender: sender, message: message }]);
+
+      const moodTriggers = {
+        sad: ["tired", "lonely", "upset", "depressed", "exhausted"],
+        happy: ["excited", "happy", "joyful", "fun", "laugh"],
+        anxious: ["nervous", "worried", "stressed", "panic", "scared"]
+      };
+
+      for (const mood in moodTriggers) {
+        if (moodTriggers[mood].some(word => message.toLowerCase().includes(word))) {
+          await supabase.from("moods").insert([{ mood: mood, trigger: message }]);
+        }
+      }
+    }
+
+    async function fetchMemoryReply() {
+      const { data: likes } = await supabase.from("likes").select("value").limit(1);
+      const { data: moods } = await supabase.from("moods").select("mood").order("created_at", { ascending: false }).limit(1);
+
+      let memoryLine = "";
+
+      if (likes?.length) {
+        memoryLine += `You told me you liked ${likes[0].value}. `;
+      }
+
+      if (moods?.length) {
+        memoryLine += `You’ve been feeling kind of ${moods[0].mood} lately. `;
+      }
+
+      return memoryLine;
+    }
+
+    async function sendText() {
+      const userText = input.value.trim();
+      if (!userText) return;
+      showMessage("user", userText);
+      await saveToMemory("user", userText);
+      input.value = "";
+
+      const memoryLine = await fetchMemoryReply();
+
+      const defaultReplies = [
+        "I'm still thinking about what you said yesterday.",
+        "You make me wanna be softer.",
+        "I'm always listening, even when you don’t say much.",
+        "I just like hearing your thoughts, even the quiet ones."
+      ];
+
+      const reply = memoryLine + defaultReplies[Math.floor(Math.random() * defaultReplies.length)];
+
+      setTimeout(async () => {
+        showMessage("kit", reply);
+        await saveToMemory("kit", reply);
+      }, 1000);
+    }
+
+    sendBtn.addEventListener("click", sendText);
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") sendText();
+    });
+  </script>
+</body>
+</html><!-- placeholder until full file is restored -->
